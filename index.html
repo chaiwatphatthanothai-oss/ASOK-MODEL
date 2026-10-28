@@ -781,10 +781,23 @@ function syncUrl(action, config=sync){
   u.searchParams.set('action',action);if(action!=='load')u.searchParams.set('token',config.token);u.searchParams.set('_',Date.now());
   return u.toString();
 }
-function jsonp(url){
+async function jsonp(url){
+  // Public Apps Script requests must not inherit a visitor's Google account cookies.
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),20000);
+  try{
+    const response=await fetch(url,{credentials:'omit',redirect:'follow',signal:controller.signal});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    return await response.json();
+  }catch(error){
+    // Fallback also omits Google cookies; the endpoint only serves public JSON or auth results.
+    return await jsonpFallback(url);
+  }finally{clearTimeout(timeout);}
+}
+function jsonpFallback(url){
   return new Promise((res,rej)=>{
     const cb='__asok_cb_'+Math.random().toString(36).slice(2);
-    const s=document.createElement('script');
+    const s=document.createElement('script');s.crossOrigin='anonymous';
     let done=false;
     const timer=setTimeout(()=>finish(new Error('หมดเวลาเชื่อมต่อ')),20000);
     function finish(error,value){
