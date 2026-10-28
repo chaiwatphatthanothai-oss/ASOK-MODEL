@@ -419,19 +419,8 @@ function A(o){return Object.assign({id:id(), plan:'physical', name:'', schedule:
 function defaultData(){
   return {
     version:2,
-    project:{title:'โครงการบูรณาการพัฒนาเพื่อการจัดการด้านสุขภาวะองค์รวม (อโศกโมเดล)', budget:1250000, start:'1 ต.ค. 2569', end:'30 ก.ย. 2570', owner:'ส่วนกิจการเพื่อสังคม', updated:'1 ต.ค. 2569', passcode:'asok2569'},
-    activities:[
-      A({plan:'physical', name:'แอโรบิกเพื่อสุขภาพ', schedule:'ทุกวันอังคารและพฤหัสบดี 17.30–19.30 น.', target:73, baseDone:48, basePeople:3300, note:'ผู้เข้าร่วมสะสมยกมารวมทั้งแผนงาน 3,300 คน'}),
-      A({plan:'physical', name:'โยคะเพื่อสุขภาพ', schedule:'ทุกวันจันทร์และพุธ 17.30–19.30 น.', target:71, baseDone:50}),
-      A({plan:'physical', name:'เซิร์ฟสเก็ต / สเก็ตบอร์ด', schedule:'ทุกวันพุธ 16.30–18.30 น.', target:37, baseDone:26}),
-      A({plan:'mind', name:'กิจกรรม DIY (กาย+ใจ)', schedule:'ทุกวันพุธเว้นพุธ (รูปแบบเปลี่ยนไปเรื่อย ๆ)', target:0, baseDone:0, basePeople:2003, note:'ผู้เข้าร่วมสะสมยกมารวมทั้งแผนงาน 2,003 คน'}),
-      A({plan:'social', name:'อาสาทำวีลแชร์เพื่อสัตว์พิการ', schedule:'22 พ.ย. 2568', target:1, baseDone:1, basePeople:70, note:'มศว ประสานมิตร'}),
-      A({plan:'social', name:'ยางยืดออกกำลังกายผู้สูงอายุ', schedule:'13 มิ.ย. 2569', target:1, baseDone:1, basePeople:75, note:'มศว ประสานมิตร'}),
-      A({plan:'social', name:'เห็น–ไม่เห็นสนุกคือกัน', schedule:'17 พ.ค. 2569', target:1, baseDone:1, basePeople:20, note:'จุฬาลงกรณ์มหาวิทยาลัย'}),
-      A({plan:'social', name:'จิตอาสาและเสริมสร้างเครือข่ายความร่วมมือ', schedule:'20–21 ธ.ค. 2568', target:1, baseDone:1, basePeople:40, note:'ชุมชนริมทางรถไฟมักกะสัน'}),
-      A({plan:'social', name:'ASOK MODEL x ECO LIFE (กิจกรรมรักษ์โลก)', schedule:'อยู่ระหว่างดำเนินการ', target:1, baseDone:0, note:'แพลตฟอร์ม ECO LIFE ในสำนักงานอธิการบดี เป้าหมาย 500 คน'}),
-      A({plan:'network', name:'ดนตรีในสวน ร่วมกับเขตวัฒนา', schedule:'24 เม.ย. / 5, 12, 19 พ.ค. 2569', target:4, baseDone:4, basePeople:425, note:'ณ สวนป่าเอกมัย (4 ครั้ง)'}),
-    ]
+    project:{title:'โครงการบูรณาการพัฒนาเพื่อการจัดการด้านสุขภาวะองค์รวม (อโศกโมเดล)', budget:0, start:'1 ต.ค. 2569', end:'30 ก.ย. 2570', owner:'ส่วนกิจการเพื่อสังคม', updated:'28 ต.ค. 2569', passcode:'asok2569'},
+    activities:[]
   };
 }
 function id(){return 'a'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-3);}
@@ -440,6 +429,7 @@ let data = load();
 const expanded = new Set();
 let locked = sessionStorage.getItem('asokUnlocked')!=='1';
 let suppressPush = false;
+let initialLoadPending = false;
 let lastSavedPayload = JSON.stringify(stripped());
 let sync = loadSync();
 function loadSync(){try{return JSON.parse(localStorage.getItem('asokSyncConfig'))||{url:DEFAULT_SYNC_URL,token:''};}catch(e){return {url:DEFAULT_SYNC_URL,token:''};}}
@@ -682,6 +672,7 @@ function delLog(aid,lid){
 /* ---------- activity modal ---------- */
 const overlay=document.getElementById('overlay');
 function openModal(actId,presetPlan){
+  if(initialLoadPending){toast('กำลังโหลดข้อมูลจาก Sheet กรุณารอสักครู่');return;}
   if(locked)return;
   document.getElementById('actId').value=actId||'';
   const sel=document.getElementById('fPlan'); sel.innerHTML=PLANS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
@@ -734,7 +725,7 @@ document.getElementById('importBtn').addEventListener('click',()=>document.getEl
 document.getElementById('importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const d=migrate(JSON.parse(r.result));if(d.project&&d.activities){data=d;render();setOverlay.classList.remove('open');toast('นำเข้าข้อมูลสำเร็จ');}else toast('ไฟล์ไม่ถูกต้อง');}catch(err){toast('อ่านไฟล์ไม่สำเร็จ');}};
   r.readAsText(f);e.target.value='';});
-document.getElementById('resetBtn').addEventListener('click',()=>{if(confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้นจากเอกสารโครงการ?')){data=defaultData();expanded.clear();render();setOverlay.classList.remove('open');toast('รีเซ็ตข้อมูลแล้ว');}});
+document.getElementById('resetBtn').addEventListener('click',()=>{if(locked)return;if(confirm('ล้างกิจกรรมและประวัติทั้งหมด พร้อมตั้งงบประมาณเป็นศูนย์? กรุณาส่งออกข้อมูลสำรองก่อนดำเนินการ')){const passcode=data.project.passcode;data=defaultData();data.project.passcode=passcode;expanded.clear();render();setOverlay.classList.remove('open');toast('รีเซ็ตข้อมูลแล้ว');}});
 
 /* theme */
 document.getElementById('themeBtn').addEventListener('click',()=>{const cur=document.documentElement.getAttribute('data-theme');const isDark=cur?cur==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;const next=isDark?'light':'dark';document.documentElement.setAttribute('data-theme',next);localStorage.setItem('asokTheme',next);render();});
@@ -803,6 +794,7 @@ function jsonp(url){
 function stripped(){const c=JSON.parse(JSON.stringify(data));delete c._collapsed;return c;}
 async function pullFromSheet(){
   if(!syncEnabled())return false;
+  if(pushInFlight){syncSetPill('err','กำลังบันทึก กรุณารอให้เสร็จก่อนดึงข้อมูล');return false;}
   clearTimeout(pushTimer);
   syncSetPill('syncing');
   try{
@@ -839,7 +831,8 @@ async function pushToSheet(){
 }
 function initSync(){
   if(!syncEnabled()){syncSetPill('off');return;}
-  pullFromSheet();
+  initialLoadPending=true;
+  pullFromSheet().finally(()=>{initialLoadPending=false;});
 }
 /* sync settings buttons */
 document.getElementById('testSyncBtn').addEventListener('click',async()=>{
